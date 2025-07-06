@@ -184,4 +184,26 @@ class Number {
 		return max( $min, min( $max, $number ) );
 	}
 
+	/**
+	 * Negate a number (always returns negative).
+	 *
+	 * @param float $number Number to negate.
+	 *
+	 * @return float Negative number.
+	 */
+	public static function negate( float $number ): float {
+		return abs( $number ) * -1;
+	}
+
+	/**
+	 * Get absolute value of a number.
+	 *
+	 * @param float $number Number to get absolute value for.
+	 *
+	 * @return float Absolute value.
+	 */
+	public static function abs( float $number ): float {
+		return abs( $number );
+	}
+
 }
