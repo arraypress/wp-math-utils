@@ -98,7 +98,7 @@ class Number {
 	 */
 	public static function ordinal( int $number ): string {
 		$suffixes = [ 'th', 'st', 'nd', 'rd' ];
-		$mod100 = $number % 100;
+		$mod100   = $number % 100;
 
 		if ( $mod100 >= 11 && $mod100 <= 13 ) {
 			$suffix = 'th';
@@ -141,23 +141,36 @@ class Number {
 	 * Abbreviate large numbers (1000 → 1K, 1000000 → 1M).
 	 *
 	 * @param float $number    Number to abbreviate.
-	 * @param int   $precision Decimal places for result (default: 1).
+	 * @param int   $precision Maximum decimal places for result (default: 1).
 	 *
 	 * @return string Abbreviated number.
 	 */
 	public static function abbreviate( float $number, int $precision = 1 ): string {
-		$abs = abs( $number );
+		$abs  = abs( $number );
 		$sign = $number < 0 ? '-' : '';
 
 		if ( $abs >= 1000000000 ) {
-			return $sign . round( $abs / 1000000000, $precision ) . 'B';
+			$result = $abs / 1000000000;
+			$suffix = 'B';
 		} elseif ( $abs >= 1000000 ) {
-			return $sign . round( $abs / 1000000, $precision ) . 'M';
+			$result = $abs / 1000000;
+			$suffix = 'M';
 		} elseif ( $abs >= 1000 ) {
-			return $sign . round( $abs / 1000, $precision ) . 'K';
+			$result = $abs / 1000;
+			$suffix = 'K';
+		} else {
+			return (string) $number;
 		}
 
-		return (string) $number;
+		// Smart decimal handling - only show decimals when needed
+		$rounded = round( $result, $precision );
+		if ( $rounded == (int) $rounded ) {
+			// Whole number, no decimals needed
+			return $sign . (int) $rounded . $suffix;
+		} else {
+			// Has fractional part, show with decimals
+			return $sign . number_format( $rounded, $precision ) . $suffix;
+		}
 	}
 
 	/**
@@ -192,7 +205,7 @@ class Number {
 	 * @return float Negative number.
 	 */
 	public static function negate( float $number ): float {
-		return abs( $number ) * -1;
+		return abs( $number ) * - 1;
 	}
 
 	/**
