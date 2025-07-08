@@ -1,6 +1,6 @@
 # WordPress Math Utils
 
-A lean WordPress library for mathematical calculations, e-commerce operations, and number utilities.
+A lean WordPress library for mathematical calculations, e-commerce operations, number utilities, and safe expression evaluation.
 
 ## Installation
 
@@ -26,6 +26,10 @@ $change = Math::percentage_change(100, 120);      // 20% increase
 $formatted = Number::format(1234.56);             // "1,234.56"
 $ordinal = Number::ordinal(23);                   // "23rd"
 $abbreviated = Number::abbreviate(1500000);       // "1.5M"
+
+// Safe expression evaluation
+$result = wp_evaluate_expression('2 + 3 * 4');    // 14
+$user_calc = wp_safe_eval($_POST['formula']);      // Safe alternative to eval()
 ```
 
 ## Math Class
@@ -149,9 +153,89 @@ Number::abbreviate( 1200000000 );   // "1.2B"
 // Round to step
 Number::round_to_step( 23.7, 5 );   // 25.0 (nearest 5)
 Number::round_to_step( 12.3, 0.5 ); // 12.5 (nearest 0.5)
+
+// Convert values with constraints
+Number::to_numeric( '42', 'int', 0, 100 );  // 42 (integer, clamped to 0-100)
+Number::to_numeric( '3.14159', 'float' );   // 3.14159
 ```
 
+## Expression Parser
+
+Safe evaluation of mathematical expressions - a secure alternative to `eval()`.
+
+### Basic Usage
+```php
+use ArrayPress\MathUtils\ExpressionParser;
+
+$parser = new ExpressionParser( 2 ); // 2 decimal places
+
+// Basic arithmetic
+$result = $parser->evaluate( '2 + 3 * 4' );        // 14
+$result = $parser->evaluate( '(10 + 5) / 3' );     // 5
+$result = $parser->evaluate( '2 ^ 3 ^ 2' );        // 512 (right associative)
+
+// Decimal numbers
+$result = $parser->evaluate( '3.14 * 2' );         // 6.28
+$result = $parser->evaluate( '10.5 / 2.1' );       // 5
+```
+
+### Helper Functions
+```php
+// Simple evaluation
+$result = wp_evaluate_expression( '100 * 1.25 + 50' );     // 175
+$result = wp_evaluate_expression( '15.99 * 0.85', 4 );     // 13.5915 (4 decimal places)
+
+// Safe eval alternative
+$user_formula = $_POST['calculation']; // User input: "price * quantity + shipping"
+$result = wp_safe_eval( $user_formula );
+
+// Error handling
+$result = wp_evaluate_expression( 'invalid expression' );
+if ( $result === null ) {
+    echo 'Invalid mathematical expression';
+}
+```
+
+### Security Features
+- **No code execution** - Only mathematical operations allowed
+- **Input validation** - Rejects invalid characters and syntax
+- **Safe operators** - Only `+`, `-`, `*`, `/`, `^`, `(`, `)` and numbers
+- **Error handling** - Graceful failure instead of PHP errors
+
 ## Real-World Examples
+
+### Dynamic Pricing Formulas
+```php
+// Admin sets pricing formula
+$formula = get_option( 'pricing_formula' ); // "(base_price * quantity) + shipping_cost"
+
+// Calculate price based on user input
+$base_price = 25.99;
+$quantity = 3;
+$shipping = 5.99;
+
+$expression = str_replace( 
+    ['base_price', 'quantity', 'shipping_cost'], 
+    [$base_price, $quantity, $shipping], 
+    $formula 
+);
+
+$total = wp_evaluate_expression( $expression ); // 83.96
+```
+
+### User Calculator Widget
+```php
+// Safe user calculator
+if ( isset( $_POST['calculation'] ) ) {
+    $result = wp_safe_eval( sanitize_text_field( $_POST['calculation'] ) );
+    
+    if ( $result !== null ) {
+        echo "Result: " . Number::format( $result );
+    } else {
+        echo "Invalid expression. Please use only numbers and +, -, *, /, ^ operators.";
+    }
+}
+```
 
 ### E-commerce Checkout
 ```php
@@ -183,44 +267,53 @@ $formatted_change = Number::format( $change, 1 ) . '%';
 
 echo "Revenue growth: " . $formatted_change; // "Revenue growth: 15.6%"
 
-// Commission calculations
-$sales    = [1200, 850, 2100, 950];
-$avg_sale = Math::average( $sales ); // 1275.00
+// Commission calculations using expressions
+$sales_data = [
+    ['amount' => 1200, 'rate' => 5],
+    ['amount' => 850, 'rate' => 7.5],
+    ['amount' => 2100, 'rate' => 10]
+];
 
-foreach ( $sales as $sale ) {
-    $commission = Math::percentage( $sale, 5 ); // 5% commission
-    echo "Sale: $" . Number::format( $sale ) . " - Commission: $" . Number::format( $commission );
+foreach ( $sales_data as $sale ) {
+    $commission = wp_evaluate_expression( "{$sale['amount']} * {$sale['rate']} / 100" );
+    echo "Sale: $" . Number::format( $sale['amount'] ) . " - Commission: $" . Number::format( $commission );
 }
 ```
 
-### Order Management
+### Configuration-Driven Calculations
 ```php
-// Generate order numbers with padding
-$order_id     = 1234;
-$order_number = "ORD-" . Number::zero_pad( $order_id, 6 ); // "ORD-001234"
+// Configurable tax calculation
+$tax_formula = get_option( 'tax_calculation_formula', 'price * rate / 100' );
+$price = 100.00;
+$rate = 8.25;
 
-// Display metrics
-$total_orders   = 15420;
-$display_orders = Number::abbreviate( $total_orders ); // "15.4K"
+$formula = str_replace( ['price', 'rate'], [$price, $rate], $tax_formula );
+$tax = wp_evaluate_expression( $formula ); // 8.25
 
-// Calculate conversion rates
-$visitors   = 25000;
-$purchases  = 750;
-$conversion = Math::conversion_rate( $purchases, $visitors ); // 3.00%
+// Complex shipping calculation
+$shipping_formula = get_option( 'shipping_formula', '(weight * 0.5) + (distance / 100) + base_fee' );
+$weight = 2.5;
+$distance = 150;
+$base_fee = 5.99;
+
+$expression = str_replace( 
+    ['weight', 'distance', 'base_fee'], 
+    [$weight, $distance, $base_fee], 
+    $shipping_formula 
+);
+$shipping = wp_evaluate_expression( $expression ); // 8.74
 ```
 
-### Tax Handling for Different Regions
-```php
-// US (tax exclusive)
-$us_price = 100.00;
-$us_tax   = Math::tax( $us_price, 8.25, false );
-// Display: $100.00 + $8.25 tax = $108.25 total
+## Available Classes
 
-// EU (tax inclusive)  
-$eu_price = 121.00; // Price includes 21% VAT
-$eu_tax   = Math::tax( $eu_price, 21, true );
-// Display: $121.00 (includes $21.00 VAT)
-```
+- **`Math`** - E-commerce calculations, percentages, and business metrics
+- **`Number`** - Number formatting, validation, and manipulation
+- **`ExpressionParser`** - Safe mathematical expression evaluation
+
+## Available Functions
+
+- **`wp_evaluate_expression()`** - Evaluate mathematical expressions safely
+- **`wp_safe_eval()`** - Safe alternative to PHP's `eval()` function
 
 ## Requirements
 
@@ -237,5 +330,5 @@ This project is licensed under the GPL-2.0-or-later License.
 
 ## Support
 
-- [Documentation](https://github.com/arraypress/wp-media-utils)
-- [Issue Tracker](https://github.com/arraypress/wp-media-utils/issues)
+- [Documentation](https://github.com/arraypress/wp-math-utils)
+- [Issue Tracker](https://github.com/arraypress/wp-math-utils/issues)
