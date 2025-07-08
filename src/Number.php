@@ -19,6 +19,37 @@ namespace ArrayPress\MathUtils;
 class Number {
 
 	/**
+	 * Convert a value to a specific numeric type with optional constraints.
+	 *
+	 * @param mixed      $value The value to convert.
+	 * @param string     $type  The numeric type ('int' or 'float').
+	 * @param float|null $min   Optional minimum value.
+	 * @param float|null $max   Optional maximum value.
+	 *
+	 * @return int|float The converted and constrained value.
+	 */
+	public static function to_numeric( $value, string $type = 'float', ?float $min = null, ?float $max = null ) {
+		$type = strtolower( $type );
+
+		// Convert to appropriate numeric type
+		if ( $type === 'int' ) {
+			$result = is_numeric( $value ) ? (int) $value : 0;
+		} else {
+			$result = is_numeric( $value ) ? (float) $value : 0.0;
+		}
+
+		// Apply constraints
+		if ( $min !== null ) {
+			$result = max( $result, $min );
+		}
+		if ( $max !== null ) {
+			$result = min( $result, $max );
+		}
+
+		return $type === 'int' ? (int) $result : (float) $result;
+	}
+
+	/**
 	 * Check if a number is even.
 	 *
 	 * @param int $number Number to check.
