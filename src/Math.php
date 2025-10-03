@@ -2,9 +2,7 @@
 /**
  * Math Utilities
  *
- * This class provides essential mathematical utilities for e-commerce, business calculations,
- * and common financial operations. Focuses on practical, frequently-used calculations
- * with consistent precision handling and error-resistant methods.
+ * Business and e-commerce calculations for WordPress applications.
  *
  * @package ArrayPress\MathUtils
  * @since   1.0.0
@@ -19,19 +17,6 @@ namespace ArrayPress\MathUtils;
 class Math {
 
 	/**
-	 * Calculate percentage of a value.
-	 *
-	 * @param float $value      Value to calculate percentage of.
-	 * @param float $percentage Percentage to calculate (e.g., 25 for 25%).
-	 * @param int   $precision  Decimal places to round to (default: 2).
-	 *
-	 * @return float Calculated percentage amount.
-	 */
-	public static function percentage( float $value, float $percentage, int $precision = 2 ): float {
-		return round( $value * ( $percentage / 100 ), $precision );
-	}
-
-	/**
 	 * Calculate tax (inclusive or exclusive).
 	 *
 	 * @param float $price     Price to calculate tax for.
@@ -39,8 +24,7 @@ class Math {
 	 * @param bool  $inclusive Whether tax is included in price (default: false).
 	 * @param int   $precision Decimal places to round to (default: 2).
 	 *
-	 * @return array Array with 'tax' amount and 'price_without_tax' (for inclusive) or 'price_with_tax' (for
-	 *               exclusive).
+	 * @return array Array with 'tax' amount and 'price_without_tax' or 'price_with_tax'.
 	 */
 	public static function tax( float $price, float $rate, bool $inclusive = false, int $precision = 2 ): array {
 		if ( $inclusive ) {
@@ -148,44 +132,56 @@ class Math {
 	}
 
 	/**
-	 * Calculate average.
+	 * Abbreviate large numbers (1000 → 1K, 1000000 → 1M).
 	 *
-	 * @param array $values    Array of numeric values.
-	 * @param int   $precision Decimal places to round to (default: 2).
+	 * @param float $number    Number to abbreviate.
+	 * @param int   $precision Maximum decimal places for result (default: 1).
 	 *
-	 * @return float Average value.
+	 * @return string Abbreviated number.
 	 */
-	public static function average( array $values, int $precision = 2 ): float {
-		if ( empty( $values ) ) {
-			return 0.0;
+	public static function abbreviate( float $number, int $precision = 1 ): string {
+		$abs  = abs( $number );
+		$sign = $number < 0 ? '-' : '';
+
+		if ( $abs >= 1000000000 ) {
+			$result = $abs / 1000000000;
+			$suffix = 'B';
+		} elseif ( $abs >= 1000000 ) {
+			$result = $abs / 1000000;
+			$suffix = 'M';
+		} elseif ( $abs >= 1000 ) {
+			$result = $abs / 1000;
+			$suffix = 'K';
+		} else {
+			return (string) $number;
 		}
 
-		$sum   = array_sum( $values );
-		$count = count( $values );
-
-		return round( $sum / $count, $precision );
+		$rounded = round( $result, $precision );
+		if ( $rounded == (int) $rounded ) {
+			return $sign . (int) $rounded . $suffix;
+		} else {
+			return $sign . number_format( $rounded, $precision ) . $suffix;
+		}
 	}
 
 	/**
-	 * Convert currency to cents (for precise calculations).
+	 * Get ordinal suffix for a number (1st, 2nd, 3rd, 4th, etc.).
 	 *
-	 * @param float $amount Amount in dollars/euros/etc.
+	 * @param int $number Number to get suffix for.
 	 *
-	 * @return int Amount in cents.
+	 * @return string Number with ordinal suffix.
 	 */
-	public static function to_cents( float $amount ): int {
-		return (int) round( $amount * 100 );
-	}
+	public static function ordinal( int $number ): string {
+		$suffixes = [ 'th', 'st', 'nd', 'rd' ];
+		$mod100   = $number % 100;
 
-	/**
-	 * Convert cents back to currency.
-	 *
-	 * @param int $cents Amount in cents.
-	 *
-	 * @return float Amount in dollars/euros/etc.
-	 */
-	public static function from_cents( int $cents ): float {
-		return (float) ( $cents / 100 );
+		if ( $mod100 >= 11 && $mod100 <= 13 ) {
+			$suffix = 'th';
+		} else {
+			$suffix = $suffixes[ $number % 10 ] ?? 'th';
+		}
+
+		return $number . $suffix;
 	}
 
 }
